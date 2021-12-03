@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:tflite/tflite.dart';
 import 'dart:math' as math;
+import 'dart:io' show Platform;
 
 class CameraViewPage extends StatefulWidget {
   const CameraViewPage({Key? key}) : super(key: key);
@@ -20,8 +21,8 @@ class CameraViewPage extends StatefulWidget {
 class _CameraViewPageState extends State<CameraViewPage> {
   late final CameraController _controller;
   Timer? _timer;
-  late AccelerometerEvent _acEvent;
-  late UserAccelerometerEvent _userAcEvent;
+  AccelerometerEvent? _acEvent;
+  UserAccelerometerEvent? _userAcEvent;
   bool _showCar = true;
   bool _canTakePicture = false;
 
@@ -45,7 +46,9 @@ class _CameraViewPageState extends State<CameraViewPage> {
   void initState() {
     super.initState();
     SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeRight,
+      Platform.isIOS
+          ? DeviceOrientation.landscapeRight
+          : DeviceOrientation.landscapeLeft,
     ]);
 
     // _loadModel();
@@ -56,7 +59,8 @@ class _CameraViewPageState extends State<CameraViewPage> {
       if (!mounted) {
         return;
       }
-      await _controller.lockCaptureOrientation();
+      await _controller
+          .lockCaptureOrientation(DeviceOrientation.landscapeRight);
       setState(() {
         _calculateCameraSize();
       });
@@ -107,7 +111,10 @@ class _CameraViewPageState extends State<CameraViewPage> {
     });
 
     _timer ??= Timer.periodic(Duration(milliseconds: 50), (_) {
-      if (_screenWidth != null && _screenHeight != null) {
+      if (_screenWidth != null &&
+          _screenHeight != null &&
+          _acEvent != null &&
+          _userAcEvent != null) {
         _setBarPosition();
       }
     });
@@ -169,13 +176,16 @@ class _CameraViewPageState extends State<CameraViewPage> {
   }
 
   _setBarPosition() {
-    final double eventZ = _acEvent.z - _userAcEvent.z;
-    final double eventY = _acEvent.y - _userAcEvent.y;
+    final double eventZ = _acEvent!.z - _userAcEvent!.z;
+    final double eventY = _acEvent!.y - _userAcEvent!.y;
     final double zz = double.parse(eventZ.toStringAsFixed(1));
     final double yy = double.parse(eventY.toStringAsFixed(1));
 
     if (mounted) {
       setState(() {
+        _cameraHeight = _screenHeight;
+        _cameraWidth = _screenHeight! * _controller.value.aspectRatio;
+
         // When x = 0 it should be centered horizontally
         // The left position should equal (width - 100) / 2
         // The greatest absolute value of x is 10, multiplying it by 12 allows the left position to move a total of 120 in either direction.
@@ -205,73 +215,87 @@ class _CameraViewPageState extends State<CameraViewPage> {
       _carFrameBox = keyContext.findRenderObject() as RenderBox;
     }*/
 
+    final size = MediaQuery.of(context).size;
+    final deviceRatio = size.width / size.height;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
           Visibility(
             visible: _cameraWidth != null && _cameraHeight != null,
-            child: OverflowBox(
-              maxWidth: _cameraWidth,
-              maxHeight: _cameraHeight,
-              child: CameraPreview(
-                _controller,
-                child: Stack(
-                  children: [
-                    Visibility(
-                      visible: _showCar,
-                      child: Center(
-                        child: Image.asset(
-                          'assets/images/car_chassis_2t.png',
-                          key: _carFrameKey,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    Consumer<Notifier>(
-                      builder: (_, notifier, __) => Center(
-                        child: Image.asset(
-                          'assets/images/circle_1t.png',
-                          color: notifier.canTakePicture
-                              ? Colors.green.withOpacity(0.7)
-                              : Colors.red.withOpacity(0.7),
-                          width: 200,
-                          height: 200,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(Icons.arrow_back_ios),
-                    ),
-                    // Sensor widget.
-                    Visibility(
-                      visible: _screenWidth != null && _screenHeight != null,
-                      child: Positioned(
-                        top: _y,
-                        left: _x,
-                        // the container has a color and is wrapped in a ClipOval to make it round
-                        child: Transform(
-                          alignment: FractionalOffset.center,
-                          // set transform origin
-                          transform: new Matrix4.rotationZ(_z),
-                          // rotate -10 deg
-                          child: Consumer<Notifier>(
-                            builder: (_, notifier, __) => Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(5),
-                                color: notifier.canTakePicture
-                                    ? Colors.green
-                                    : Colors.redAccent,
+            child: Center(
+              child: Container(
+                width: _screenWidth,
+                height: _screenHeight,
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: _controller.value.aspectRatio,
+                    child: CameraPreview(
+                      _controller,
+                      child: Stack(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 36),
+                            child: Visibility(
+                              visible: _showCar,
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/car_chassis_2t.png',
+                                  key: _carFrameKey,
+                                  color: Colors.white,
+                                ),
                               ),
-                              width: 60,
-                              height: 8,
                             ),
                           ),
-                        ),
+                          Consumer<Notifier>(
+                            builder: (_, notifier, __) => Center(
+                              child: Image.asset(
+                                'assets/images/circle_1t.png',
+                                color: notifier.canTakePicture
+                                    ? Colors.green.withOpacity(0.7)
+                                    : Colors.red.withOpacity(0.7),
+                                width: 200,
+                                height: 200,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(Icons.arrow_back_ios),
+                          ),
+                          // Sensor widget.
+                          Visibility(
+                            visible:
+                                _screenWidth != null && _screenHeight != null,
+                            child: Positioned(
+                              top: _y,
+                              left: _x,
+                              // the container has a color and is wrapped in a ClipOval to make it round
+                              child: Transform(
+                                alignment: FractionalOffset.center,
+                                // set transform origin
+                                transform: new Matrix4.rotationZ(_z),
+                                // rotate -10 deg
+                                child: Consumer<Notifier>(
+                                  builder: (_, notifier, __) => Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(5),
+                                      color: notifier.canTakePicture
+                                          ? Colors.green
+                                          : Colors.redAccent,
+                                    ),
+                                    width: 60,
+                                    height: 8,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
