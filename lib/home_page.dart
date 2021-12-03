@@ -1,8 +1,38 @@
 import 'package:camera_layer/camera_view_page.dart';
+import 'package:camera_layer/notifier.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:tflite/tflite.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
+
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    _loadModel();
+  }
+
+  _loadModel() async {
+    Tflite.close();
+    try {
+      final String? res = await Tflite.loadModel(
+        model: "assets/tflite/ssd_mobilenet.tflite",
+        labels: "assets/tflite/ssd_mobilenet.txt",
+      );
+
+      setState(() {});
+      print('Load model succeeded: $res');
+    } on PlatformException catch (e) {
+      print('Load model failed: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,7 +41,11 @@ class HomePage extends StatelessWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
-              context, MaterialPageRoute(builder: (_) => CameraViewPage()));
+            context,
+            MaterialPageRoute(
+                builder: (_) => ChangeNotifierProvider(
+                    create: (_) => Notifier(), child: CameraViewPage())),
+          );
         },
         child: Icon(Icons.camera_alt_outlined),
       ),
