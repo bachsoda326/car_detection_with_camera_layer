@@ -36,6 +36,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
   double _z = 0;
   double? _screenWidth;
   double? _screenHeight;
+  double? _centerHeight;
   double? _cameraWidth;
   double? _cameraHeight;
 
@@ -130,9 +131,18 @@ class _CameraViewPageState extends State<CameraViewPage> {
     super.dispose();
   }
 
+  _checkCanTakePic() {
+    if ((_y + 4 - _centerHeight!).abs() > 12 || _z.abs() > 0.25) {
+      context.read<Notifier>().canTakePicture = false;
+    } else {
+      context.read<Notifier>().canTakePicture = true;
+    }
+  }
+
   _calculateCameraSize() {
     _screenWidth ??= MediaQuery.of(context).size.width;
     _screenHeight ??= MediaQuery.of(context).size.height;
+    _centerHeight ??= (_screenHeight! / 2) + 1;
 
     final Size previewSize = _controller.value.previewSize!;
     final double previewHeight = previewSize.height;
@@ -199,6 +209,8 @@ class _CameraViewPageState extends State<CameraViewPage> {
         _y = zz * 6 + _cameraHeight! / 2;
 
         _z = -yy / 6;
+
+        _checkCanTakePic();
       });
     }
   }
@@ -258,6 +270,16 @@ class _CameraViewPageState extends State<CameraViewPage> {
                                 width: 200,
                                 height: 200,
                               ),
+                            ),
+                          ),
+                          Center(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(5),
+                                color: Colors.black,
+                              ),
+                              width: 90,
+                              height: 2,
                             ),
                           ),
                           IconButton(
