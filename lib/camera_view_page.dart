@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:camera_layer/bndbox.dart';
 import 'package:camera_layer/notifier.dart';
+import 'package:camera_layer/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -19,12 +20,38 @@ class CameraViewPage extends StatefulWidget {
 }
 
 class _CameraViewPageState extends State<CameraViewPage> {
+  final List<int> _colors = [
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    // Colors.transparent.value,
+    Colors.white.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+    Colors.transparent.value,
+  ];
+
   late final CameraController _controller;
   Timer? _timer;
   AccelerometerEvent? _acEvent;
   UserAccelerometerEvent? _userAcEvent;
   bool _showCar = true;
   bool _canTakePicture = false;
+  bool _hasCar = false;
 
   List<dynamic>? _recognitions;
   bool _isDetecting = false;
@@ -67,11 +94,12 @@ class _CameraViewPageState extends State<CameraViewPage> {
       });
 
       // Detect car obj.
-      /*_controller.startImageStream((CameraImage img) {
+      _controller.startImageStream((CameraImage img) {
         if (!_isDetecting) {
           _isDetecting = true;
 
-          Tflite.detectObjectOnFrame(
+          // Object detection.
+          /*Tflite.detectObjectOnFrame(
             bytesList: img.planes.map((plane) {
               return plane.bytes;
             }).toList(),
@@ -91,9 +119,41 @@ class _CameraViewPageState extends State<CameraViewPage> {
             _setRecognitions(recognitions, img.height, img.width);
 
             _isDetecting = false;
+          });*/
+
+          // Image segmentation.
+          Tflite.runSegmentationOnFrame(
+            bytesList: img.planes.map((plane) {
+              return plane.bytes;
+            }).toList(),
+            // required
+            imageHeight: img.height,
+            // defaults to 1280
+            imageWidth: img.width,
+            // defaults to 720
+            imageMean: 127.5,
+            // defaults to 0.0
+            imageStd: 127.5,
+            // defaults to 255.0
+            rotation: 90,
+            // defaults to 90, Android only
+            outputType: "png",
+            // defaults to "png"
+            asynch: true,
+            // defaults to true
+            labelColors: _colors,
+          ).then((rec) async {
+            if (rec != null /* && recognitions == null*/) {
+              _hasCar = await Utils.detectIfHasCar(bytes: rec);
+              print(_hasCar);
+
+              setState(() {
+                _isDetecting = false;
+              });
+            }
           });
         }
-      });*/
+      });
     });
 
     // Listen to device sensor changes.
@@ -132,7 +192,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
   }
 
   _checkCanTakePic() {
-    if ((_y + 4 - _centerHeight!).abs() > 12 || _z.abs() > 0.25) {
+    if ((_y + 4 - _centerHeight!).abs() > 12 || _z.abs() > 0.25 || !_hasCar) {
       context.read<Notifier>().canTakePicture = false;
     } else {
       context.read<Notifier>().canTakePicture = true;
@@ -144,7 +204,8 @@ class _CameraViewPageState extends State<CameraViewPage> {
     _screenHeight ??= MediaQuery.of(context).size.height;
     _centerHeight ??= (_screenHeight! / 2) + 1;
 
-    final Size previewSize = _controller.value.previewSize!;
+    // For old camera size.
+    /*final Size previewSize = _controller.value.previewSize!;
     final double previewHeight = previewSize.height;
     final double previewWidth = previewSize.width;
     final double screenRatio = _screenHeight! / _screenWidth!;
@@ -155,7 +216,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
         : _screenWidth!;
     _cameraHeight = screenRatio > previewRatio
         ? _screenHeight!
-        : _screenWidth! / previewWidth * previewHeight;
+        : _screenWidth! / previewWidth * previewHeight;*/
   }
 
   _loadModel() async {
@@ -179,6 +240,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
       setState(() {
         _recognitions =
             recognitions?.where((e) => e["detectedClass"] == 'car').toList();
+        print(_recognitions);
         _imageHeight = imageHeight;
         _imageWidth = imageWidth;
       });
@@ -226,9 +288,6 @@ class _CameraViewPageState extends State<CameraViewPage> {
       // widget is visible
       _carFrameBox = keyContext.findRenderObject() as RenderBox;
     }*/
-
-    final size = MediaQuery.of(context).size;
-    final deviceRatio = size.width / size.height;
 
     return Scaffold(
       backgroundColor: Colors.black,
