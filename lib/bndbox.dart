@@ -7,23 +7,23 @@ class BndBox extends StatelessWidget {
   final List<dynamic> results;
   final int previewH;
   final int previewW;
-  final double screenH;
-  final double screenW;
+  final double cameraH;
+  final double cameraW;
   final RenderBox? carFrameBox;
 
   const BndBox(
     this.results,
     this.previewH,
     this.previewW,
-    this.screenH,
-    this.screenW, {
+    this.cameraH,
+    this.cameraW, {
     required this.carFrameBox,
   });
 
   @override
   Widget build(BuildContext context) {
     final double emptyWidthSpace =
-        (MediaQuery.of(context).size.width - screenW) / 2;
+        (MediaQuery.of(context).size.width - cameraW) / 2;
 
     // Check with car wireframe.
     _checkIfCanTakePicture(
@@ -59,20 +59,42 @@ class BndBox extends StatelessWidget {
     }
 
     // Check if center.
-    _checkIfCarIsCenter(double left, double top, double right, double bottom) {
+    _checkIfCarIsCenter(double left, double top, double right, double bottom,
+        double width, double height) {
       final Notifier notifier = context.read<Notifier>();
 
       // Outside car frame.
       if (notifier.reachGoodZone) {
-        // print('$left - $top - $right - $bottom');
-        if (left < emptyWidthSpace + 24 ||
-            top < 8 ||
-            right > screenW + emptyWidthSpace - 24 ||
-            bottom > screenH - 8) {
+        final double leftConstraint = emptyWidthSpace + 24;
+        final double topConstraint = 16;
+        final double rightConstraint = cameraW + emptyWidthSpace - 24;
+        final double bottomConstraint = cameraH - 16;
+        final double constraintWidth = rightConstraint - leftConstraint;
+        final double constraintHeight = bottomConstraint - topConstraint;
+        final double imgArea = width * height;
+        double wireframeArea = constraintWidth * constraintHeight;
+
+        if (width / height < constraintWidth / constraintHeight) {
+          wireframeArea = constraintHeight * constraintHeight * width / height;
+        } else {
+          wireframeArea = constraintWidth * constraintWidth * height / width;
+        }
+
+        final double centerConstraintHorizontal =
+            ((left - leftConstraint).abs() - (rightConstraint - right).abs()).abs();
+        final double centerConstraintVertical =
+            ((top - topConstraint).abs() - (bottomConstraint - bottom).abs()).abs();
+
+        if (left < leftConstraint ||
+            top < topConstraint ||
+            right > rightConstraint ||
+            bottom > bottomConstraint ||
+            imgArea / wireframeArea < 0.3 ||
+            centerConstraintHorizontal > 96 ||
+            centerConstraintVertical > 84) {
           if (notifier.hasCar) {
             WidgetsBinding.instance?.addPostFrameCallback((_) {
               notifier.hasCar = false;
-              print('-- OUTSIDE');
             });
           }
         }
@@ -81,7 +103,6 @@ class BndBox extends StatelessWidget {
           if (!notifier.hasCar) {
             WidgetsBinding.instance?.addPostFrameCallback((_) {
               notifier.hasCar = true;
-              print('-- IN');
             });
           }
         }
@@ -96,19 +117,19 @@ class BndBox extends StatelessWidget {
         var _h = re["rect"]["h"];
         var scaleW, scaleH, x, y, w, h;
 
-        if (screenH / screenW > previewH / previewW) {
-          scaleW = screenH / previewH * previewW;
-          scaleH = screenH;
-          var difW = (scaleW - screenW) / scaleW;
+        if (cameraH / cameraW > previewH / previewW) {
+          scaleW = cameraH / previewH * previewW;
+          scaleH = cameraH;
+          var difW = (scaleW - cameraW) / scaleW;
           x = (_x - difW / 2) * scaleW + emptyWidthSpace;
           w = _w * scaleW;
           if (_x < difW / 2) w -= (difW / 2 - _x) * scaleW;
           y = _y * scaleH;
           h = _h * scaleH;
         } else {
-          scaleH = screenW / previewW * previewH;
-          scaleW = screenW;
-          var difH = (scaleH - screenH) / scaleH;
+          scaleH = cameraW / previewW * previewH;
+          scaleW = cameraW;
+          var difH = (scaleH - cameraH) / scaleH;
           x = _x * scaleW;
           w = _w * scaleW;
           y = (_y - difH / 2) * scaleH;
@@ -122,7 +143,7 @@ class BndBox extends StatelessWidget {
         final double bottom = top + h;
 
         // _checkIfCanTakePicture(left, top, right, bottom);
-        _checkIfCarIsCenter(left, top, right, bottom);
+        _checkIfCarIsCenter(left, top, right, bottom, w, h);
 
         return Positioned(
           left: left,
