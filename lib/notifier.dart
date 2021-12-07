@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 
 class Notifier extends ChangeNotifier {
   bool _canTakePicture = false;
+  bool hasCar = false;
+  bool reachGoodZone = false;
 
   bool get canTakePicture => _canTakePicture;
 

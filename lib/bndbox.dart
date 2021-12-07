@@ -10,8 +10,6 @@ class BndBox extends StatelessWidget {
   final double screenH;
   final double screenW;
   final RenderBox? carFrameBox;
-  final bool canTakePicture;
-  final Function(bool) callback;
 
   const BndBox(
     this.results,
@@ -20,12 +18,14 @@ class BndBox extends StatelessWidget {
     this.screenH,
     this.screenW, {
     required this.carFrameBox,
-    required this.canTakePicture,
-    required this.callback,
   });
 
   @override
   Widget build(BuildContext context) {
+    final double emptyWidthSpace =
+        (MediaQuery.of(context).size.width - screenW) / 2;
+
+    // Check with car wireframe.
     _checkIfCanTakePicture(
         double left, double top, double right, double bottom) {
       if (carFrameBox != null) {
@@ -35,7 +35,6 @@ class BndBox extends StatelessWidget {
         final double rightBox = pos.dx + carFrameBox!.size.width;
         final double bottomBox = pos.dy + carFrameBox!.size.height;
         final Notifier notifier = context.read<Notifier>();
-        print(' LEFT: $left');
 
         // Outside car frame.
         if (left < leftBox ||
@@ -59,6 +58,36 @@ class BndBox extends StatelessWidget {
       }
     }
 
+    // Check if center.
+    _checkIfCarIsCenter(double left, double top, double right, double bottom) {
+      final Notifier notifier = context.read<Notifier>();
+
+      // Outside car frame.
+      if (notifier.reachGoodZone) {
+        // print('$left - $top - $right - $bottom');
+        if (left < emptyWidthSpace + 24 ||
+            top < 8 ||
+            right > screenW + emptyWidthSpace - 24 ||
+            bottom > screenH - 8) {
+          if (notifier.hasCar) {
+            WidgetsBinding.instance?.addPostFrameCallback((_) {
+              notifier.hasCar = false;
+              print('-- OUTSIDE');
+            });
+          }
+        }
+        // Inside car frame.
+        else {
+          if (!notifier.hasCar) {
+            WidgetsBinding.instance?.addPostFrameCallback((_) {
+              notifier.hasCar = true;
+              print('-- IN');
+            });
+          }
+        }
+      }
+    }
+
     List<Widget> _renderCarBox() {
       return results.map((re) {
         var _x = re["rect"]["x"];
@@ -71,7 +100,7 @@ class BndBox extends StatelessWidget {
           scaleW = screenH / previewH * previewW;
           scaleH = screenH;
           var difW = (scaleW - screenW) / scaleW;
-          x = (_x - difW / 2) * scaleW;
+          x = (_x - difW / 2) * scaleW + emptyWidthSpace;
           w = _w * scaleW;
           if (_x < difW / 2) w -= (difW / 2 - _x) * scaleW;
           y = _y * scaleH;
@@ -93,6 +122,7 @@ class BndBox extends StatelessWidget {
         final double bottom = top + h;
 
         // _checkIfCanTakePicture(left, top, right, bottom);
+        _checkIfCarIsCenter(left, top, right, bottom);
 
         return Positioned(
           left: left,

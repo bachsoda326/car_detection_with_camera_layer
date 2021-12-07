@@ -23,10 +23,10 @@ class _HomePageState extends State<HomePage> {
     Tflite.close();
     try {
       final String? res = await Tflite.loadModel(
-        // model: "assets/tflite/ssd_mobilenet.tflite",
-        model: "assets/tflite/lite-model_deeplabv3-mobilenetv2_dm05_1_default_2.tflite",
-        // labels: "assets/tflite/ssd_mobilenet.txt",
-        labels: "assets/tflite/deeplabv3_257_mv_gpu.txt",
+        model: "assets/tflite/ssd_mobilenet.tflite",
+        // model: "assets/tflite/lite-model_deeplabv3-mobilenetv2_dm05_1_default_2.tflite",
+        labels: "assets/tflite/ssd_mobilenet.txt",
+        // labels: "assets/tflite/deeplabv3_257_mv_gpu.txt",
       );
 
       setState(() {});

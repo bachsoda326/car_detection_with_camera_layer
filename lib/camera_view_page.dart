@@ -50,7 +50,6 @@ class _CameraViewPageState extends State<CameraViewPage> {
   AccelerometerEvent? _acEvent;
   UserAccelerometerEvent? _userAcEvent;
   bool _showCar = true;
-  bool _canTakePicture = false;
   bool _hasCar = false;
 
   List<dynamic>? _recognitions;
@@ -58,8 +57,8 @@ class _CameraViewPageState extends State<CameraViewPage> {
   int _imageHeight = 0;
   int _imageWidth = 0;
 
-  double _y = 125;
-  double _x = 0;
+  double? _y;
+  double? _x;
   double _z = 0;
   double? _screenWidth;
   double? _screenHeight;
@@ -79,10 +78,8 @@ class _CameraViewPageState extends State<CameraViewPage> {
           : DeviceOrientation.landscapeLeft,
     ]);
 
-    // _loadModel();
-
     _controller = CameraController(
-        context.read<CameraDescription>(), ResolutionPreset.max);
+        context.read<CameraDescription>(), ResolutionPreset.high);
     _controller.initialize().then((_) async {
       if (!mounted) {
         return;
@@ -99,7 +96,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
           _isDetecting = true;
 
           // Object detection.
-          /*Tflite.detectObjectOnFrame(
+          Tflite.detectObjectOnFrame(
             bytesList: img.planes.map((plane) {
               return plane.bytes;
             }).toList(),
@@ -119,10 +116,10 @@ class _CameraViewPageState extends State<CameraViewPage> {
             _setRecognitions(recognitions, img.height, img.width);
 
             _isDetecting = false;
-          });*/
+          });
 
           // Image segmentation.
-          Tflite.runSegmentationOnFrame(
+          /*Tflite.runSegmentationOnFrame(
             bytesList: img.planes.map((plane) {
               return plane.bytes;
             }).toList(),
@@ -143,7 +140,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
             // defaults to true
             labelColors: _colors,
           ).then((rec) async {
-            if (rec != null /* && recognitions == null*/) {
+            if (rec != null */ /* && recognitions == null*/ /*) {
               _hasCar = await Utils.detectIfHasCar(bytes: rec);
               print(_hasCar);
 
@@ -151,7 +148,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
                 _isDetecting = false;
               });
             }
-          });
+          });*/
         }
       });
     });
@@ -192,10 +189,29 @@ class _CameraViewPageState extends State<CameraViewPage> {
   }
 
   _checkCanTakePic() {
-    if ((_y + 4 - _centerHeight!).abs() > 12 || _z.abs() > 0.25 || !_hasCar) {
+    // Old condition of img segmentation.
+    /*if ((_y + 4 - _centerHeight!).abs() > 12 || _z.abs() > 0.25 || !_hasCar) {
       context.read<Notifier>().canTakePicture = false;
     } else {
       context.read<Notifier>().canTakePicture = true;
+    }*/
+
+    final Notifier notifier = context.read<Notifier>();
+
+    if ((_y! + 4 - _centerHeight!).abs() > 12 || _z.abs() > 0.25) {
+      if (notifier.reachGoodZone) {
+        notifier.reachGoodZone = false;
+      }
+    } else {
+      if (!notifier.reachGoodZone) {
+        notifier.reachGoodZone = true;
+      }
+    }
+
+    if (notifier.reachGoodZone && notifier.hasCar) {
+      if (!notifier.canTakePicture) notifier.canTakePicture = true;
+    } else {
+      if (notifier.canTakePicture) notifier.canTakePicture = false;
     }
   }
 
@@ -203,6 +219,8 @@ class _CameraViewPageState extends State<CameraViewPage> {
     _screenWidth ??= MediaQuery.of(context).size.width;
     _screenHeight ??= MediaQuery.of(context).size.height;
     _centerHeight ??= (_screenHeight! / 2) + 1;
+    _cameraHeight ??= _screenHeight;
+    _cameraWidth ??= _screenHeight! * _controller.value.aspectRatio;
 
     // For old camera size.
     /*final Size previewSize = _controller.value.previewSize!;
@@ -219,28 +237,12 @@ class _CameraViewPageState extends State<CameraViewPage> {
         : _screenWidth! / previewWidth * previewHeight;*/
   }
 
-  _loadModel() async {
-    Tflite.close();
-    print('Loading model');
-    try {
-      print('Loading model');
-      final String? res = await Tflite.loadModel(
-        model: "assets/tflite/ssd_mobilenet.tflite",
-        labels: "assets/tflite/ssd_mobilenet.txt",
-      );
-
-      print('Load model succeeded: $res');
-    } on PlatformException catch (e) {
-      print('Load model failed: $e');
-    }
-  }
-
   _setRecognitions(List<dynamic>? recognitions, imageHeight, imageWidth) {
     if (mounted) {
       setState(() {
         _recognitions =
             recognitions?.where((e) => e["detectedClass"] == 'car').toList();
-        print(_recognitions);
+        // print(_recognitions);
         _imageHeight = imageHeight;
         _imageWidth = imageWidth;
       });
@@ -255,8 +257,8 @@ class _CameraViewPageState extends State<CameraViewPage> {
 
     if (mounted) {
       setState(() {
-        _cameraHeight = _screenHeight;
-        _cameraWidth = _screenHeight! * _controller.value.aspectRatio;
+        // _cameraHeight ??= _screenHeight;
+        // _cameraWidth ??= _screenHeight! * _controller.value.aspectRatio;
 
         // When x = 0 it should be centered horizontally
         // The left position should equal (width - 100) / 2
@@ -347,8 +349,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
                           ),
                           // Sensor widget.
                           Visibility(
-                            visible:
-                                _screenWidth != null && _screenHeight != null,
+                            visible: _x != null && _y != null,
                             child: Positioned(
                               top: _y,
                               left: _x,
@@ -381,20 +382,17 @@ class _CameraViewPageState extends State<CameraViewPage> {
               ),
             ),
           ),
-          /*BndBox(
-            _recognitions == null ? [] : _recognitions!,
-            _imageHeight,
-            _imageWidth,
-            _screenHeight,
-            _screenWidth,
-            carFrameBox: _carFrameBox,
-            canTakePicture: _canTakePicture,
-            callback: (val) {
-              setState(() {
-                _canTakePicture = val;
-              });
-            },
-          ),*/
+          Visibility(
+            visible: _cameraWidth != null && _cameraHeight != null,
+            child: BndBox(
+              _recognitions == null ? [] : _recognitions!,
+              _imageHeight,
+              _imageWidth,
+              _cameraHeight!,
+              _cameraWidth!,
+              carFrameBox: _carFrameBox,
+            ),
+          ),
           // Show car icon.
           Padding(
             padding: const EdgeInsets.only(right: 28, bottom: 24),
