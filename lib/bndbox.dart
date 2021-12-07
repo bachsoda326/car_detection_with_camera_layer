@@ -10,6 +10,7 @@ class BndBox extends StatelessWidget {
   final double cameraH;
   final double cameraW;
   final RenderBox? carFrameBox;
+  final bool showLine;
 
   const BndBox(
     this.results,
@@ -18,6 +19,7 @@ class BndBox extends StatelessWidget {
     this.cameraH,
     this.cameraW, {
     required this.carFrameBox,
+    required this.showLine,
   });
 
   @override
@@ -225,8 +227,11 @@ class BndBox extends StatelessWidget {
       }).toList();
     }*/
 
-    return Stack(
-      children: _renderCarBox(),
+    return Visibility(
+      visible: showLine,
+      child: Stack(
+        children: _renderCarBox(),
+      ),
     );
   }
 }

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:camera_layer/bndbox.dart';
+import 'package:camera_layer/widgets/center_indicator.dart';
+import 'package:camera_layer/widgets/center_measure.dart';
 import 'package:camera_layer/notifier.dart';
 import 'package:camera_layer/utils.dart';
 import 'package:flutter/material.dart';
@@ -49,7 +51,8 @@ class _CameraViewPageState extends State<CameraViewPage> {
   Timer? _timer;
   AccelerometerEvent? _acEvent;
   UserAccelerometerEvent? _userAcEvent;
-  bool _showCar = true;
+  bool _showCar = false;
+  bool _showLine = true;
   bool _hasCar = false;
 
   List<dynamic>? _recognitions;
@@ -198,7 +201,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
 
     final Notifier notifier = context.read<Notifier>();
 
-    if ((_y! + 4 - _centerHeight!).abs() > 12 || _z.abs() > 0.25) {
+    if ((_y! + 16 - _centerHeight!).abs() > 12 || _z.abs() > 0.25) {
       if (notifier.reachGoodZone) {
         notifier.reachGoodZone = false;
       }
@@ -264,13 +267,13 @@ class _CameraViewPageState extends State<CameraViewPage> {
         // The left position should equal (width - 100) / 2
         // The greatest absolute value of x is 10, multiplying it by 12 allows the left position to move a total of 120 in either direction.
         // x = ((event.x * 12) + ((width - 100) / 2));
-        // _x = (_screenWidth! - 210) / 2;
-        _x = (_cameraWidth! / 2) - 30;
+        // _x = (_cameraWidth! / 2) - 30;
+        _x = (_cameraWidth! / 2) - 16;
 
         // When y = 0 it should have a top position matching the target, which we set at 125
         // y = -event.y * 12 + height / 2;
         // _y = zz * 10 + _screenHeight! / 2;
-        _y = zz * 6 + _cameraHeight! / 2;
+        _y = zz * 6 + (_cameraHeight! / 2) - 16;
 
         _z = -yy / 6;
 
@@ -321,7 +324,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
                               ),
                             ),
                           ),
-                          Consumer<Notifier>(
+                          /*Consumer<Notifier>(
                             builder: (_, notifier, __) => Center(
                               child: Image.asset(
                                 'assets/images/circle_1t.png',
@@ -332,8 +335,9 @@ class _CameraViewPageState extends State<CameraViewPage> {
                                 height: 200,
                               ),
                             ),
-                          ),
-                          Center(
+                          ),*/
+                          Center(child: CenterMeasure()),
+                          /*Center(
                             child: Container(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
@@ -342,13 +346,13 @@ class _CameraViewPageState extends State<CameraViewPage> {
                               width: 90,
                               height: 2,
                             ),
-                          ),
+                          ),*/
                           IconButton(
                             onPressed: () => Navigator.pop(context),
                             icon: Icon(Icons.arrow_back_ios),
                           ),
                           // Sensor widget.
-                          Visibility(
+                          /*Visibility(
                             visible: _x != null && _y != null,
                             child: Positioned(
                               top: _y,
@@ -373,6 +377,14 @@ class _CameraViewPageState extends State<CameraViewPage> {
                                 ),
                               ),
                             ),
+                          ),*/
+                          Visibility(
+                            visible: _x != null && _y != null,
+                            child: Positioned(
+                              top: _y,
+                              left: _x,
+                              child: CenterIndicator(),
+                            ),
                           ),
                         ],
                       ),
@@ -391,6 +403,7 @@ class _CameraViewPageState extends State<CameraViewPage> {
               _cameraHeight!,
               _cameraWidth!,
               carFrameBox: _carFrameBox,
+              showLine: _showLine,
             ),
           ),
           // Show car icon.
@@ -406,6 +419,21 @@ class _CameraViewPageState extends State<CameraViewPage> {
                 },
                 iconSize: 40,
                 icon: Icon(Icons.car_repair, color: Colors.white),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 28, bottom: 24),
+            child: Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                onPressed: () {
+                  setState(() {
+                    _showLine = !_showLine;
+                  });
+                },
+                iconSize: 40,
+                icon: Icon(Icons.blur_linear, color: Colors.white),
               ),
             ),
           ),
