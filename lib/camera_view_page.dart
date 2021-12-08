@@ -211,7 +211,11 @@ class _CameraViewPageState extends State<CameraViewPage> {
       }
     }
 
-    if (notifier.reachGoodZone && notifier.hasCar) {
+    if (notifier.reachGoodZone &&
+        notifier.hasCar &&
+        !notifier.isTooFar &&
+        !notifier.isTooClose &&
+        notifier.isCenter) {
       if (!notifier.canTakePicture) notifier.canTakePicture = true;
     } else {
       if (notifier.canTakePicture) notifier.canTakePicture = false;
@@ -245,6 +249,12 @@ class _CameraViewPageState extends State<CameraViewPage> {
       setState(() {
         _recognitions =
             recognitions?.where((e) => e["detectedClass"] == 'car').toList();
+        if (_recognitions == null || _recognitions!.isEmpty) {
+          context.read<Notifier>().hasCar = false;
+        } else {
+          context.read<Notifier>().hasCar = true;
+        }
+
         // print(_recognitions);
         _imageHeight = imageHeight;
         _imageWidth = imageWidth;
@@ -337,6 +347,16 @@ class _CameraViewPageState extends State<CameraViewPage> {
                             ),
                           ),*/
                           Center(child: CenterMeasure()),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 60),
+                            child: Center(
+                              child: Text(
+                                context.read<Notifier>().getGuideMessage(),
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 12),
+                              ),
+                            ),
+                          ),
                           /*Center(
                             child: Container(
                               decoration: BoxDecoration(

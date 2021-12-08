@@ -65,7 +65,6 @@ class BndBox extends StatelessWidget {
         double width, double height) {
       final Notifier notifier = context.read<Notifier>();
 
-      // Outside car frame.
       if (notifier.reachGoodZone) {
         final double leftConstraint = emptyWidthSpace + 24;
         final double topConstraint = 16;
@@ -83,10 +82,40 @@ class BndBox extends StatelessWidget {
         }
 
         final double centerConstraintHorizontal =
-            ((left - leftConstraint).abs() - (rightConstraint - right).abs()).abs();
+            ((left - leftConstraint).abs() - (rightConstraint - right).abs())
+                .abs();
         final double centerConstraintVertical =
-            ((top - topConstraint).abs() - (bottomConstraint - bottom).abs()).abs();
+            ((top - topConstraint).abs() - (bottomConstraint - bottom).abs())
+                .abs();
 
+        // print('img: $imgArea --- screen: $wireframeArea');
+
+        if (imgArea / wireframeArea < 0.3) {
+          notifier.isTooFar = true;
+        } else {
+          notifier.isTooFar = false;
+
+          if (imgArea >= wireframeArea ||
+              left < leftConstraint && right > rightConstraint ||
+              top < topConstraint && bottom > bottomConstraint) {
+            notifier.isTooClose = true;
+          } else {
+            notifier.isTooClose = false;
+
+            if (left < leftConstraint ||
+                top < topConstraint ||
+                right > rightConstraint ||
+                bottom > bottomConstraint ||
+                centerConstraintHorizontal > 96 ||
+                centerConstraintVertical > 84) {
+              notifier.isCenter = false;
+            } else {
+              notifier.isCenter = true;
+            }
+          }
+        }
+
+        /*// Outside car frame.
         if (left < leftConstraint ||
             top < topConstraint ||
             right > rightConstraint ||
@@ -94,20 +123,20 @@ class BndBox extends StatelessWidget {
             imgArea / wireframeArea < 0.3 ||
             centerConstraintHorizontal > 96 ||
             centerConstraintVertical > 84) {
-          if (notifier.hasCar) {
+          if (notifier.isCenter) {
             WidgetsBinding.instance?.addPostFrameCallback((_) {
-              notifier.hasCar = false;
+              notifier.isCenter = false;
             });
           }
         }
         // Inside car frame.
         else {
-          if (!notifier.hasCar) {
+          if (!notifier.isCenter) {
             WidgetsBinding.instance?.addPostFrameCallback((_) {
-              notifier.hasCar = true;
+              notifier.isCenter = true;
             });
           }
-        }
+        }*/
       }
     }
 
